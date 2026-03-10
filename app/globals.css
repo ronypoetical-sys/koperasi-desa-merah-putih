@@ -1,0 +1,171 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 0 100% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 43 74% 52%;
+    --accent-foreground: 0 0% 10%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: 0 100% 40%;
+    --radius: 0.5rem;
+  }
+
+  * { @apply border-border; }
+
+  body { @apply bg-background text-foreground font-sans antialiased; }
+
+  h1, h2, h3 { @apply font-display; }
+}
+
+@layer components {
+  .nav-item-active { @apply bg-merah text-white font-medium; }
+
+  .stat-card {
+    @apply bg-white rounded-xl border border-border p-6 shadow-sm hover:shadow-md transition-shadow;
+  }
+
+  .badge-aktif {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800;
+  }
+  .badge-nonaktif {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800;
+  }
+
+  .input-rupiah { @apply pl-12 font-mono; }
+}
+
+/* Animasi halaman */
+.page-enter {
+  animation: fade-in 0.3s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { @apply bg-muted; }
+::-webkit-scrollbar-thumb { @apply bg-muted-foreground/30 rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-muted-foreground/50; }
+
+/* ============================================================
+   PRINT STYLES — Format A4, rapi, professional
+   ============================================================ */
+@media print {
+  /* Reset layout untuk print */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  /* Sembunyikan elemen non-laporan */
+  aside,
+  header,
+  footer,
+  nav,
+  button,
+  .no-print,
+  [class*="sidebar"],
+  [class*="header"] {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    font-size: 11pt;
+    font-family: 'Plus Jakarta Sans', Arial, sans-serif;
+  }
+
+  main {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Ukuran kertas A4 */
+  @page {
+    size: A4 portrait;
+    margin: 15mm 15mm 20mm 15mm;
+  }
+
+  /* Header laporan */
+  .print-header {
+    text-align: center;
+    margin-bottom: 16pt;
+    padding-bottom: 8pt;
+    border-bottom: 2px solid #000;
+  }
+
+  .print-header h1 { font-size: 14pt; font-weight: bold; margin: 0; }
+  .print-header h2 { font-size: 12pt; font-weight: bold; margin: 4pt 0 2pt; }
+  .print-header p  { font-size: 10pt; margin: 2pt 0; color: #333; }
+
+  /* Tabel print */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 10pt;
+    page-break-inside: auto;
+  }
+
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+  tr    { page-break-inside: avoid; }
+
+  th, td {
+    border: 1px solid #ccc !important;
+    padding: 5pt 8pt !important;
+    text-align: left;
+  }
+
+  th {
+    background-color: #f0f0f0 !important;
+    font-weight: bold;
+  }
+
+  td[class*="text-right"], th[class*="text-right"] {
+    text-align: right !important;
+  }
+
+  /* Nomor halaman */
+  .print-footer {
+    position: fixed;
+    bottom: 10mm;
+    width: 100%;
+    text-align: center;
+    font-size: 9pt;
+    color: #666;
+    border-top: 1px solid #ddd;
+    padding-top: 4pt;
+  }
+
+  /* Sembunyikan dekorasi UI di print */
+  .shadow-sm, .shadow-md, .shadow-xl { box-shadow: none !important; }
+  .rounded-xl, .rounded-2xl { border-radius: 0 !important; }
+  .bg-gray-50 { background-color: #f9f9f9 !important; }
+
+  /* Warna akuntansi tetap terlihat */
+  .text-green-600, .text-green-700 { color: #16a34a !important; }
+  .text-red-500, .text-red-600     { color: #dc2626 !important; }
+  .bg-blue-50   { background-color: #eff6ff !important; }
+  .bg-green-50  { background-color: #f0fdf4 !important; }
+
+  /* Layout neraca tetap 2 kolom di print */
+  .lg\\:grid-cols-2 { grid-template-columns: 1fr 1fr !important; }
+}
