@@ -1,12 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
 export default function RegisterPage() {
-  const router = useRouter()
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -15,7 +13,7 @@ export default function RegisterPage() {
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
     if (form.password !== form.confirmPassword) { setError('Password tidak cocok'); return }
-    if (form.password.length < 8) { setError('Password minimal 8 karakter'); return }
+    if (form.password.length < 6) { setError('Password minimal 6 karakter'); return }
     setLoading(true)
     setError('')
 
@@ -25,7 +23,6 @@ export default function RegisterPage() {
       password: form.password,
       options: {
         data: { full_name: form.name, name: form.name },
-        emailRedirectTo: `${window.location.origin}/auth/login`,
       },
     })
 
@@ -41,8 +38,7 @@ export default function RegisterPage() {
 
     // Jika langsung dapat session (email confirmation dimatikan) → redirect ke setup
     if (data?.session) {
-      router.push('/setup')
-      router.refresh()
+      window.location.href = '/setup'
       return
     }
 
@@ -60,24 +56,16 @@ export default function RegisterPage() {
             </svg>
           </div>
           <h2 className="text-2xl font-display text-gray-900 mb-3">Pendaftaran Berhasil! 🎉</h2>
-          <p className="text-gray-600 mb-2">Email verifikasi telah dikirim ke:</p>
+          <p className="text-gray-600 mb-2">Akun Anda sudah dibuat.</p>
           <p className="font-semibold text-gray-900 mb-6 bg-gray-100 py-2 px-4 rounded-lg inline-block">{form.email}</p>
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-left">
-            <p className="text-blue-800 text-sm font-medium mb-2">📧 Langkah selanjutnya:</p>
-            <ol className="text-blue-700 text-sm space-y-1 list-decimal list-inside">
-              <li>Buka email Anda di kotak masuk</li>
-              <li>Klik link verifikasi yang dikirim</li>
-              <li>Setelah terverifikasi, login dan setup koperasi</li>
-            </ol>
+            <p className="text-blue-800 text-sm font-medium mb-2">✅ Langkah selanjutnya:</p>
+            <p className="text-blue-700 text-sm">Silakan login dengan email dan password yang baru saja Anda daftarkan.</p>
           </div>
-          <p className="text-sm text-gray-500 mb-6">Tidak menerima email? Cek folder spam/junk.</p>
           <Link href="/auth/login" className="inline-block bg-merah hover:bg-merah-dark text-white font-semibold py-2.5 px-8 rounded-lg transition-colors">
-            Ke Halaman Login →
+            Login Sekarang →
           </Link>
         </div>
-        <footer className="mt-10 text-center text-xs text-gray-400">
-          Dikembangkan oleh <span className="font-medium text-gray-500">Imam Sahroni Darmawan</span>
-        </footer>
       </div>
     )
   }
@@ -100,7 +88,7 @@ export default function RegisterPage() {
             {[
               { label: 'Nama Lengkap', key: 'name', type: 'text', placeholder: 'Budi Santoso' },
               { label: 'Email', key: 'email', type: 'email', placeholder: 'budi@koperasi.id' },
-              { label: 'Password', key: 'password', type: 'password', placeholder: 'Min. 8 karakter' },
+              { label: 'Password', key: 'password', type: 'password', placeholder: 'Min. 6 karakter' },
               { label: 'Konfirmasi Password', key: 'confirmPassword', type: 'password', placeholder: '••••••••' },
             ].map(field => (
               <div key={field.key}>
@@ -117,7 +105,15 @@ export default function RegisterPage() {
             ))}
             <button type="submit" disabled={loading}
               className="w-full bg-merah hover:bg-merah-dark text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-60 mt-2">
-              {loading ? 'Mendaftar...' : 'Daftar & Setup Koperasi →'}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                  Mendaftar...
+                </span>
+              ) : 'Daftar Sekarang →'}
             </button>
           </form>
           <p className="text-center text-sm text-gray-500 mt-6">

@@ -21,33 +21,44 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // PENTING: Selalu panggil getUser() untuk refresh session cookie
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
-  // Route publik yang tidak butuh auth
-  const publicRoutes = ['/auth/login', '/auth/register', '/auth/reset-password']
+  // Route publik
+  const publicRoutes = ['/auth/login', '/auth/register', '/auth/reset-password', '/auth/update-password']
   const isPublicRoute = publicRoutes.some(r => pathname.startsWith(r))
 
-  // Kalau belum login dan akses halaman protected -> redirect ke login
+  // Belum login → redirect ke login (kecuali sudah di public route)
   if (!user && !isPublicRoute) {
-    return NextResponse.redirect(new URL('/auth/login', request.url))
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth/login'
+    return NextResponse.redirect(url)
   }
 
-  // Kalau sudah login tapi akses halaman auth -> redirect ke dashboard
+  // Sudah login → jangan biarkan akses halaman auth
   if (user && isPublicRoute) {
-    return NextResponse.redirect(new URL('/', request.url))
+    const url = request.nextUrl.clone()
+    url.pathname = '/'
+    return NextResponse.redirect(url)
   }
 
-  // Kalau sudah login, cek apakah koperasi sudah di-setup
+  // Sudah login, cek setup koperasi — HANYA untuk route dashboard (bukan /setup)
   if (user && !isPublicRoute && pathname !== '/setup') {
-    const { data: userData } = await supabase
-      .from('users')
-      .select('koperasi_id')
-      .eq('id', user.id)
-      .single()
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('koperasi_id')
+        .eq('id', user.id)
+        .single()
 
-    if (userData && !userData.koperasi_id) {
-      return NextResponse.redirect(new URL('/setup', request.url))
+      if (userData && !userData.koperasi_id) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/setup'
+        return NextResponse.redirect(url)
+      }
+    } catch {
+      // Jika DB error, biarkan lewat — halaman sendiri yang akan handle
     }
   }
 

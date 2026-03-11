@@ -1,6 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 interface HeaderProps {
@@ -9,13 +8,10 @@ interface HeaderProps {
 }
 
 export default function Header({ user, koperasi }: HeaderProps) {
-  const router = useRouter()
-
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/auth/login')
-    router.refresh()
+    window.location.href = '/auth/login'
   }
 
   const displayName = user?.name || user?.email?.split('@')[0] || 'Pengguna'
