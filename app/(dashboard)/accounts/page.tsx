@@ -49,7 +49,7 @@ export default function AccountsPage() {
       koperasi_id: koperasiId,
       kode_akun: form.kode_akun,
       nama_akun: form.nama_akun,
-      kategori: form.kategori,
+      kategori: form.kategori as 'aset' | 'kewajiban' | 'modal' | 'pendapatan' | 'beban',
       unit_usaha_id: form.unit_usaha_id || null,
       parent_id: form.parent_id || null,
     })
