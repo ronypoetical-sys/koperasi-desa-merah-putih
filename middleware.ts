@@ -21,45 +21,25 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // PENTING: Selalu panggil getUser() untuk refresh session cookie
+  // Refresh session - WAJIB agar cookie terupdate
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
-  // Route publik
-  const publicRoutes = ['/auth/login', '/auth/register', '/auth/reset-password', '/auth/update-password']
-  const isPublicRoute = publicRoutes.some(r => pathname.startsWith(r))
+  const isAuthRoute = pathname.startsWith('/auth/')
 
-  // Belum login → redirect ke login (kecuali sudah di public route)
-  if (!user && !isPublicRoute) {
+  // Belum login dan bukan halaman auth → ke login
+  if (!user && !isAuthRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
     return NextResponse.redirect(url)
   }
 
-  // Sudah login → jangan biarkan akses halaman auth
-  if (user && isPublicRoute) {
+  // Sudah login tapi buka halaman auth → ke home
+  // PENGECUALIAN: /auth/callback harus tetap bisa diakses
+  if (user && isAuthRoute && !pathname.startsWith('/auth/callback')) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
-  }
-
-  // Sudah login, cek setup koperasi — HANYA untuk route dashboard (bukan /setup)
-  if (user && !isPublicRoute && pathname !== '/setup') {
-    try {
-      const { data: userData } = await supabase
-        .from('users')
-        .select('koperasi_id')
-        .eq('id', user.id)
-        .single()
-
-      if (userData && !userData.koperasi_id) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/setup'
-        return NextResponse.redirect(url)
-      }
-    } catch {
-      // Jika DB error, biarkan lewat — halaman sendiri yang akan handle
-    }
   }
 
   return supabaseResponse
