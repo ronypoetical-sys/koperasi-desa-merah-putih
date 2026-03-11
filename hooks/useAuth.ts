@@ -1,8 +1,9 @@
+'use client'
+
 /**
  * useAuth — Custom hook to eliminate repeated auth boilerplate
  * Provides userId, koperasiId, role and loading state
  */
-'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
