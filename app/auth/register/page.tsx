@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
 export default function RegisterPage() {
+  const router = useRouter()
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -18,7 +20,7 @@ export default function RegisterPage() {
     setError('')
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
@@ -28,10 +30,22 @@ export default function RegisterPage() {
     })
 
     if (error) {
-      setError(error.message === 'User already registered' ? 'Email sudah terdaftar. Silakan login.' : error.message)
+      if (error.message.includes('already registered') || error.message.includes('User already registered')) {
+        setError('Email sudah terdaftar. Silakan login.')
+      } else {
+        setError(error.message)
+      }
       setLoading(false)
       return
     }
+
+    // Jika langsung dapat session (email confirmation dimatikan) → redirect ke setup
+    if (data?.session) {
+      router.push('/setup')
+      router.refresh()
+      return
+    }
+
     setSuccess(true)
     setLoading(false)
   }
