@@ -2,44 +2,40 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { validateJournal } from '@/lib/accounting/journal-engine'
+import { saveTransaction, validateJournal, getTodayLocal } from '@/lib/accounting/journal-engine'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function PinjamanPage() {
+  const { koperasiId, userId, loading: authLoading } = useAuth()
   const [anggotaList, setAnggotaList] = useState<any[]>([])
-  const [unitList, setUnitList] = useState<any[]>([])
+  const [unitList, setUnitList]       = useState<any[]>([])
   const [accountList, setAccountList] = useState<any[]>([])
   const [transactions, setTransactions] = useState<any[]>([])
-  const [koperasiId, setKoperasiId] = useState('')
-  const [userId, setUserId] = useState('')
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+  const [saving, setSaving]   = useState(false)
+  const [error, setError]     = useState('')
   const [success, setSuccess] = useState('')
 
   const [form, setForm] = useState({
     anggota_id: '', unit_usaha_id: '',
-    tanggal: new Date().toISOString().split('T')[0],
+    tanggal: getTodayLocal(),
     keterangan: '', total_amount: '', jangka_waktu: '12',
     akun_piutang_id: '', akun_kas_id: '',
   })
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => {
+    if (!authLoading && koperasiId) loadData()
+  }, [authLoading, koperasiId])
 
   async function loadData() {
     const supabase = createClient()
-    const { data: authUser } = await supabase.auth.getUser()
-    if (!authUser.user) return
-    const { data: userData } = await supabase.from('users').select('koperasi_id').eq('id', authUser.user.id).single() as any
-    if (!userData?.koperasi_id) return
-    setKoperasiId(userData.koperasi_id)
-    setUserId(authUser.user.id)
     const [anggota, unit, accounts, tx] = await Promise.all([
-      supabase.from('anggota').select('id, nama').eq('koperasi_id', userData.koperasi_id).eq('status', 'aktif').order('nama'),
-      supabase.from('unit_usaha').select('id, nama_unit').eq('koperasi_id', userData.koperasi_id).eq('status', 'aktif'),
-      supabase.from('accounts').select('id, kode_akun, nama_akun, kategori').eq('koperasi_id', userData.koperasi_id).order('kode_akun'),
+      supabase.from('anggota').select('id, nama').eq('koperasi_id', koperasiId).eq('status', 'aktif').order('nama'),
+      supabase.from('unit_usaha').select('id, nama_unit').eq('koperasi_id', koperasiId).eq('status', 'aktif'),
+      supabase.from('accounts').select('id, kode_akun, nama_akun, kategori').eq('koperasi_id', koperasiId).order('kode_akun'),
       supabase.from('transactions').select('*, anggota(nama), unit_usaha(nama_unit)')
-        .eq('koperasi_id', userData.koperasi_id).eq('jenis_transaksi', 'pinjaman')
-        .order('created_at', { ascending: false }).limit(15)
+        .eq('koperasi_id', koperasiId).eq('jenis_transaksi', 'pinjaman')
+        .order('created_at', { ascending: false }).limit(15),
     ])
     setAnggotaList(anggota.data || [])
     setUnitList(unit.data || [])
@@ -57,44 +53,37 @@ export default function PinjamanPage() {
 
     const journalEntries = [
       { account_id: form.akun_piutang_id, debit: amount, credit: 0 },
-      { account_id: form.akun_kas_id, debit: 0, credit: amount },
+      { account_id: form.akun_kas_id,     debit: 0,      credit: amount },
     ]
     const validation = validateJournal(journalEntries)
     if (!validation.valid) { setError(validation.message || ''); return }
 
     setSaving(true); setError('')
-    const supabase = createClient()
-    const keterangan = form.keterangan || `Pinjaman anggota ${form.jangka_waktu} bulan`
-
-    const { data: tx, error: txErr } = await supabase.from('transactions').insert({
-      koperasi_id: koperasiId, unit_usaha_id: form.unit_usaha_id, anggota_id: form.anggota_id,
-      jenis_transaksi: 'pinjaman', tanggal: form.tanggal, keterangan, total_amount: amount, created_by: userId,
-    }).select().single() as any
-    if (txErr) { setError(txErr.message); setSaving(false); return }
-
-    const { data: journal, error: jErr } = await supabase.from('journals').insert({
-      transaction_id: tx.id, tanggal: form.tanggal, unit_usaha_id: form.unit_usaha_id, keterangan,
-    }).select().single() as any
-    if (jErr) { setError(jErr.message); setSaving(false); return }
-
-    const { error: itemErr } = await supabase.from('journal_items').insert(
-      journalEntries.map(e => ({ journal_id: journal.id, ...e }))
-    )
-    if (itemErr) { setError(itemErr.message); setSaving(false); return }
-
-    setSuccess(`Pinjaman berhasil dicatat! Rp ${amount.toLocaleString('id-ID')}`)
-    setForm({ ...form, anggota_id: '', total_amount: '', keterangan: '' })
-    setSaving(false); loadData()
-    setTimeout(() => setSuccess(''), 5000)
+    try {
+      await saveTransaction({
+        koperasi_id: koperasiId, unit_usaha_id: form.unit_usaha_id,
+        anggota_id: form.anggota_id, jenis_transaksi: 'pinjaman',
+        tanggal: form.tanggal,
+        keterangan: form.keterangan || `Pinjaman anggota ${form.jangka_waktu} bulan`,
+        total_amount: amount, created_by: userId,
+        journal_entries: journalEntries,
+      })
+      setSuccess(`Pinjaman berhasil dicatat! Rp ${amount.toLocaleString('id-ID')}`)
+      setForm(prev => ({ ...prev, anggota_id: '', total_amount: '', keterangan: '' }))
+      loadData()
+      setTimeout(() => setSuccess(''), 5000)
+    } catch (err: any) {
+      setError(err.message || 'Terjadi kesalahan')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const kasAccounts = accountList.filter(a => a.kategori === 'aset' &&
-    (a.nama_akun.toLowerCase().includes('kas') || a.nama_akun.toLowerCase().includes('bank')))
-  const piutangAccounts = accountList.filter(a => a.kategori === 'aset' &&
-    (a.nama_akun.toLowerCase().includes('piutang') || a.nama_akun.toLowerCase().includes('pinjaman')))
-  const asetAccounts = accountList.filter(a => a.kategori === 'aset')
+  const kasAccounts     = accountList.filter(a => a.kategori === 'aset' && (a.nama_akun.toLowerCase().includes('kas') || a.nama_akun.toLowerCase().includes('bank')))
+  const piutangAccounts = accountList.filter(a => a.kategori === 'aset' && (a.nama_akun.toLowerCase().includes('piutang') || a.nama_akun.toLowerCase().includes('pinjaman')))
+  const asetAccounts    = accountList.filter(a => a.kategori === 'aset')
 
-  if (loading) return <div className="flex items-center justify-center py-16 text-gray-400">Memuat...</div>
+  if (authLoading || loading) return <div className="flex items-center justify-center py-16 text-gray-400">Memuat...</div>
 
   return (
     <div className="space-y-6">
@@ -185,8 +174,7 @@ export default function PinjamanPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
               <input type="text" value={form.keterangan} onChange={e => setForm({ ...form, keterangan: e.target.value })}
-                placeholder="Opsional..."
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-merah/20 focus:border-merah" />
+                placeholder="Opsional..." className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-merah/20 focus:border-merah" />
             </div>
             <button onClick={handleSimpan} disabled={saving}
               className="w-full bg-merah hover:bg-merah-dark text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-60">

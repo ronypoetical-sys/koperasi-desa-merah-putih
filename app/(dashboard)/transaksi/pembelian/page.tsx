@@ -2,46 +2,38 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { saveTransaction, validateJournal, getTodayLocal } from '@/lib/accounting/journal-engine'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function PembelianPage() {
-  const [unitList, setUnitList] = useState<any[]>([])
+  const { koperasiId, userId, loading: authLoading } = useAuth()
+  const [unitList, setUnitList]       = useState<any[]>([])
   const [accountList, setAccountList] = useState<any[]>([])
   const [transactions, setTransactions] = useState<any[]>([])
-  const [koperasiId, setKoperasiId] = useState('')
-  const [userId, setUserId] = useState('')
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+  const [saving, setSaving]   = useState(false)
+  const [error, setError]     = useState('')
   const [success, setSuccess] = useState('')
 
   const [form, setForm] = useState({
-    unit_usaha_id: '',
-    tanggal: new Date().toISOString().split('T')[0],
-    keterangan: '',
-    total_amount: '',
-    akun_beban_id: '',
-    akun_kas_id: '',
+    unit_usaha_id: '', tanggal: getTodayLocal(),
+    keterangan: '', total_amount: '',
+    akun_beban_id: '', akun_kas_id: '',
   })
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => {
+    if (!authLoading && koperasiId) loadData()
+  }, [authLoading, koperasiId])
 
   async function loadData() {
     const supabase = createClient()
-    const { data: authUser } = await supabase.auth.getUser()
-    if (!authUser.user) return
-    const { data: userData } = await supabase.from('users').select('koperasi_id').eq('id', authUser.user.id).single() as any
-    if (!userData?.koperasi_id) return
-    setKoperasiId(userData.koperasi_id)
-    setUserId(authUser.user.id)
-
     const [unit, accounts, tx] = await Promise.all([
-      supabase.from('unit_usaha').select('id, nama_unit').eq('koperasi_id', userData.koperasi_id).eq('status', 'aktif'),
-      supabase.from('accounts').select('id, kode_akun, nama_akun, kategori').eq('koperasi_id', userData.koperasi_id).order('kode_akun'),
+      supabase.from('unit_usaha').select('id, nama_unit').eq('koperasi_id', koperasiId).eq('status', 'aktif'),
+      supabase.from('accounts').select('id, kode_akun, nama_akun, kategori').eq('koperasi_id', koperasiId).order('kode_akun'),
       supabase.from('transactions').select('*, unit_usaha(nama_unit)')
-        .eq('koperasi_id', userData.koperasi_id).eq('jenis_transaksi', 'pembelian')
-        .order('created_at', { ascending: false }).limit(15)
+        .eq('koperasi_id', koperasiId).eq('jenis_transaksi', 'pembelian')
+        .order('created_at', { ascending: false }).limit(15),
     ])
-
     setUnitList(unit.data || [])
     setAccountList(accounts.data || [])
     setTransactions(tx.data || [])
@@ -55,39 +47,38 @@ export default function PembelianPage() {
     const amount = parseFloat(form.total_amount)
     if (isNaN(amount) || amount <= 0) { setError('Jumlah pembelian harus lebih dari 0'); return }
 
+    const journalEntries = [
+      { account_id: form.akun_beban_id, debit: amount, credit: 0 },
+      { account_id: form.akun_kas_id,   debit: 0,      credit: amount },
+    ]
+    const validation = validateJournal(journalEntries)
+    if (!validation.valid) { setError(validation.message || ''); return }
+
     setSaving(true); setError('')
-    const supabase = createClient()
-    const keterangan = form.keterangan || 'Pembelian barang / jasa'
-
-    // Pembelian: DR Beban/Persediaan / CR Kas
-    const { data: tx, error: txErr } = await supabase.from('transactions').insert({
-      koperasi_id: koperasiId, unit_usaha_id: form.unit_usaha_id,
-      jenis_transaksi: 'pembelian', tanggal: form.tanggal, keterangan, total_amount: amount, created_by: userId,
-    }).select().single() as any
-    if (txErr) { setError(txErr.message); setSaving(false); return }
-
-    const { data: journal, error: jErr } = await supabase.from('journals').insert({
-      transaction_id: tx.id, tanggal: form.tanggal, unit_usaha_id: form.unit_usaha_id, keterangan,
-    }).select().single() as any
-    if (jErr) { setError(jErr.message); setSaving(false); return }
-
-    await supabase.from('journal_items').insert([
-      { journal_id: journal.id, account_id: form.akun_beban_id, debit: amount, credit: 0 },
-      { journal_id: journal.id, account_id: form.akun_kas_id, debit: 0, credit: amount },
-    ])
-
-    setSuccess(`Pembelian berhasil dicatat! Rp ${amount.toLocaleString('id-ID')}`)
-    setForm({ ...form, total_amount: '', keterangan: '' })
-    setSaving(false); loadData()
-    setTimeout(() => setSuccess(''), 5000)
+    try {
+      await saveTransaction({
+        koperasi_id: koperasiId, unit_usaha_id: form.unit_usaha_id,
+        jenis_transaksi: 'pembelian', tanggal: form.tanggal,
+        keterangan: form.keterangan || 'Pembelian barang / jasa',
+        total_amount: amount, created_by: userId,
+        journal_entries: journalEntries,
+      })
+      setSuccess(`Pembelian berhasil dicatat! Rp ${amount.toLocaleString('id-ID')}`)
+      setForm(prev => ({ ...prev, total_amount: '', keterangan: '' }))
+      loadData()
+      setTimeout(() => setSuccess(''), 5000)
+    } catch (err: any) {
+      setError(err.message || 'Terjadi kesalahan')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const kasAccounts = accountList.filter(a => a.kategori === 'aset' &&
-    (a.nama_akun.toLowerCase().includes('kas') || a.nama_akun.toLowerCase().includes('bank')))
+  const kasAccounts   = accountList.filter(a => a.kategori === 'aset' && (a.nama_akun.toLowerCase().includes('kas') || a.nama_akun.toLowerCase().includes('bank')))
   const bebanAccounts = accountList.filter(a => a.kategori === 'beban')
-  const asetAccounts = accountList.filter(a => a.kategori === 'aset')
+  const asetAccounts  = accountList.filter(a => a.kategori === 'aset')
 
-  if (loading) return <div className="flex items-center justify-center py-16 text-gray-400">Memuat...</div>
+  if (authLoading || loading) return <div className="flex items-center justify-center py-16 text-gray-400">Memuat...</div>
 
   return (
     <div className="space-y-6">
@@ -95,14 +86,11 @@ export default function PembelianPage() {
         <h1 className="text-2xl font-display text-gray-900">Transaksi Pembelian</h1>
         <p className="text-gray-500 text-sm">Catat pembelian barang atau jasa koperasi</p>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
           <h3 className="font-semibold text-gray-900 mb-4">Form Pembelian</h3>
-
           {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>}
           {success && <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm mb-4">{success}</div>}
-
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Unit Usaha *</label>
@@ -123,7 +111,6 @@ export default function PembelianPage() {
                 placeholder="0" min="0"
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-merah/20 focus:border-merah" />
             </div>
-
             <div className="p-3 bg-gray-50 rounded-lg space-y-3">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">⚙️ Mapping Jurnal</p>
               <div>
@@ -145,7 +132,6 @@ export default function PembelianPage() {
                 </select>
               </div>
             </div>
-
             {form.total_amount && parseFloat(form.total_amount) > 0 && (
               <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-xs">
                 <p className="font-medium text-blue-800 mb-2">Preview Jurnal:</p>
@@ -155,21 +141,18 @@ export default function PembelianPage() {
                 </div>
               </div>
             )}
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
               <input type="text" value={form.keterangan} onChange={e => setForm({ ...form, keterangan: e.target.value })}
                 placeholder="Nama barang / keterangan pembelian..."
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-merah/20 focus:border-merah" />
             </div>
-
             <button onClick={handleSimpan} disabled={saving}
               className="w-full bg-merah hover:bg-merah-dark text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-60">
               {saving ? 'Memproses...' : 'Catat Pembelian & Buat Jurnal'}
             </button>
           </div>
         </div>
-
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
             <h3 className="font-semibold text-gray-900">Riwayat Pembelian</h3>
