@@ -102,6 +102,7 @@ export default function AccountsPage() {
         {loading ? (
           <div className="py-16 text-center text-gray-400">Memuat...</div>
         ) : (
+          <>
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
@@ -133,6 +134,7 @@ export default function AccountsPage() {
             </tbody>
           </table>
           <Pagination page={page} totalPages={totalPages} totalItems={filtered.length} pageSize={PAGE_SIZE} onPageChange={setPage} />
+        )}
       </div>
 
       {showForm && (
