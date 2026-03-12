@@ -74,7 +74,7 @@ export type Database = {
           is_system: boolean
           created_at: string
         }
-        Insert: Omit<Database['public']['Tables']['accounts']['Row'], 'id' | 'created_at'>
+        Insert: Omit<Database['public']['Tables']['accounts']['Row'], 'id' | 'created_at' | 'is_system'> & { is_system?: boolean }
         Update: Partial<Database['public']['Tables']['accounts']['Insert']>
       }
       transactions: {

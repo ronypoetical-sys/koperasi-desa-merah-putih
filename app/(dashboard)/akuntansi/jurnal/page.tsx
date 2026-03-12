@@ -53,7 +53,7 @@ export default function JurnalPage() {
           accounts(kode_akun, nama_akun)
         )
       `)
-      .in('unit_usaha_id', unitIds.data.map(u => u.id))
+      .in('unit_usaha_id', (unitIds.data as any[]).map((u: any) => u.id))
       .order('tanggal', { ascending: false })
       .limit(100)
 
