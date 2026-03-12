@@ -135,6 +135,7 @@ export default function JurnalPage() {
             <p>Belum ada jurnal. Mulai dengan mencatat transaksi pertama!</p>
           </div>
         ) : (
+          <>
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
@@ -203,6 +204,7 @@ export default function JurnalPage() {
             </tfoot>
           </table>
           <Pagination page={page} totalPages={totalPages} totalItems={journals.length} pageSize={PAGE_SIZE} onPageChange={setPage} />
+          </>
         )}
       </div>
     </div>

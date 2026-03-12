@@ -134,6 +134,7 @@ export default function AccountsPage() {
             </tbody>
           </table>
           <Pagination page={page} totalPages={totalPages} totalItems={filtered.length} pageSize={PAGE_SIZE} onPageChange={setPage} />
+          </>
         )}
       </div>
 
