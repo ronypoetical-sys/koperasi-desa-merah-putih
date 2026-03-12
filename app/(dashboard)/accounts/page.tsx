@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/hooks/useAuth'
 
 const KATEGORI_COLORS: Record<string, string> = {
   aset: 'bg-blue-100 text-blue-700',
@@ -12,28 +13,24 @@ const KATEGORI_COLORS: Record<string, string> = {
 }
 
 export default function AccountsPage() {
+  const { koperasiId, role, loading: authLoading } = useAuth()
   const [accounts, setAccounts] = useState<any[]>([])
   const [units, setUnits] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [koperasiId, setKoperasiId] = useState('')
   const [filter, setFilter] = useState('semua')
   const [form, setForm] = useState({ kode_akun: '', nama_akun: '', kategori: 'aset', unit_usaha_id: '', parent_id: '' })
 
-  useEffect(() => { loadData() }, [])
+  const canEdit = ['admin', 'bendahara'].includes(role)
+
+  useEffect(() => { if (!authLoading && koperasiId) loadData() }, [authLoading, koperasiId])
 
   async function loadData() {
     const supabase = createClient()
-    const { data: authUser } = await supabase.auth.getUser()
-    if (!authUser.user) return
-    const { data: userData } = await supabase.from('users').select('koperasi_id').eq('id', authUser.user.id).single() as any
-    if (!userData?.koperasi_id) return
-    setKoperasiId(userData.koperasi_id)
-
     const [acc, unit] = await Promise.all([
-      supabase.from('accounts').select('*, unit_usaha(nama_unit)').eq('koperasi_id', userData.koperasi_id).order('kode_akun'),
-      supabase.from('unit_usaha').select('id, nama_unit').eq('koperasi_id', userData.koperasi_id),
+      supabase.from('accounts').select('*, unit_usaha(nama_unit)').eq('koperasi_id', koperasiId).order('kode_akun'),
+      supabase.from('unit_usaha').select('id, nama_unit').eq('koperasi_id', koperasiId),
     ])
 
     setAccounts(acc.data || [])
@@ -45,7 +42,7 @@ export default function AccountsPage() {
     if (!form.kode_akun || !form.nama_akun) return
     setSaving(true)
     const supabase = createClient()
-    await supabase.from('accounts').insert({
+    const { error } = await supabase.from('accounts').insert({
       koperasi_id: koperasiId,
       kode_akun: form.kode_akun,
       nama_akun: form.nama_akun,
@@ -53,10 +50,12 @@ export default function AccountsPage() {
       unit_usaha_id: form.unit_usaha_id || null,
       parent_id: form.parent_id || null,
     })
+    if (!error) {
+      setShowForm(false)
+      setForm({ kode_akun: '', nama_akun: '', kategori: 'aset', unit_usaha_id: '', parent_id: '' })
+      loadData()
+    }
     setSaving(false)
-    setShowForm(false)
-    setForm({ kode_akun: '', nama_akun: '', kategori: 'aset', unit_usaha_id: '', parent_id: '' })
-    loadData()
   }
 
   async function handleDelete(id: string) {
@@ -76,9 +75,11 @@ export default function AccountsPage() {
           <h1 className="text-2xl font-display text-gray-900">Chart of Accounts</h1>
           <p className="text-gray-500 text-sm">{accounts.length} akun terdaftar</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="bg-merah hover:bg-merah-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-          + Tambah Akun
-        </button>
+        {canEdit && (
+          <button onClick={() => setShowForm(true)} className="bg-merah hover:bg-merah-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            + Tambah Akun
+          </button>
+        )}
       </div>
 
       {/* Filter */}

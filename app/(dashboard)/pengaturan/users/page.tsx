@@ -2,35 +2,45 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/hooks/useAuth'
 
 const ROLES = ['admin', 'bendahara', 'kasir', 'pengawas']
 
 export default function UsersPage() {
+  const { userId: currentUserId, koperasiId, role: currentRole, loading: authLoading } = useAuth()
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
-  const [koperasiId, setKoperasiId] = useState('')
-  const [currentUserId, setCurrentUserId] = useState('')
+  const [error, setError] = useState('')
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => {
+    if (!authLoading && koperasiId) loadData()
+  }, [authLoading, koperasiId])
+
+  // SEC-003 FIX: Server-side role check — only admin can access this page
+  if (!authLoading && currentRole !== 'admin') {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="text-4xl mb-4">🔒</div>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Akses Ditolak</h2>
+        <p className="text-gray-500 text-sm">Hanya Admin yang dapat mengelola pengguna.</p>
+      </div>
+    )
+  }
 
   async function loadData() {
     const supabase = createClient()
-    const { data: authUser } = await supabase.auth.getUser()
-    if (!authUser.user) return
-    setCurrentUserId(authUser.user.id)
-
-    const { data: userData } = await supabase.from('users').select('koperasi_id').eq('id', authUser.user.id).single() as any
-    if (!userData?.koperasi_id) return
-    setKoperasiId(userData.koperasi_id)
-
-    const { data } = await supabase
+    const { data, error: fetchError } = await supabase
       .from('users')
       .select('id, name, email, role, created_at')
-      .eq('koperasi_id', userData.koperasi_id)
+      .eq('koperasi_id', koperasiId)
       .order('created_at')
 
-    setUsers(data || [])
+    if (fetchError) {
+      setError('Gagal memuat data pengguna')
+    } else {
+      setUsers(data || [])
+    }
     setLoading(false)
   }
 
@@ -40,8 +50,17 @@ export default function UsersPage() {
       return
     }
     setSaving(userId)
+    setError('')
     const supabase = createClient()
-    await supabase.from('users').update({ role: newRole }).eq('id', userId)
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ role: newRole })
+      .eq('id', userId)
+      .eq('koperasi_id', koperasiId) // extra safety: scoped to koperasi
+
+    if (updateError) {
+      setError('Gagal mengubah role. Pastikan Anda memiliki hak akses Admin.')
+    }
     setSaving(null)
     loadData()
   }
@@ -53,7 +72,7 @@ export default function UsersPage() {
     pengawas: 'bg-purple-100 text-purple-700',
   }
 
-  if (loading) return <div className="flex items-center justify-center py-16 text-gray-400">Memuat...</div>
+  if (authLoading || loading) return <div className="flex items-center justify-center py-16 text-gray-400">Memuat...</div>
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -61,6 +80,8 @@ export default function UsersPage() {
         <h1 className="text-2xl font-display text-gray-900">Manajemen User</h1>
         <p className="text-gray-500 text-sm">Kelola hak akses pengguna koperasi</p>
       </div>
+
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
 
       {/* Role legend */}
       <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">

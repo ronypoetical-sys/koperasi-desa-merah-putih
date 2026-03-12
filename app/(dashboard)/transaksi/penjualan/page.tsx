@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { saveTransaction, validateJournal, getTodayLocal } from '@/lib/accounting/journal-engine'
 import { useAuth } from '@/hooks/useAuth'
 
 export default function PenjualanPage() {
   const { koperasiId, userId, loading: authLoading } = useAuth()
+  const savingRef = useRef(false) // BUG-003 FIX: prevent double submit
   const [unitList, setUnitList]       = useState<any[]>([])
   const [accountList, setAccountList] = useState<any[]>([])
   const [transactions, setTransactions] = useState<any[]>([])
@@ -41,6 +42,7 @@ export default function PenjualanPage() {
   }
 
   async function handleSimpan() {
+    if (savingRef.current) return // BUG-003: prevent double submit
     if (!form.unit_usaha_id || !form.total_amount || !form.akun_kas_id || !form.akun_pendapatan_id) {
       setError('Lengkapi semua field yang diperlukan'); return
     }
@@ -54,7 +56,10 @@ export default function PenjualanPage() {
     const validation = validateJournal(journalEntries)
     if (!validation.valid) { setError(validation.message || ''); return }
 
-    setSaving(true); setError('')
+    if (savingRef.current) return
+    setSaving(true)
+    savingRef.current = true
+    setError('')
     try {
       await saveTransaction({
         koperasi_id: koperasiId, unit_usaha_id: form.unit_usaha_id,
@@ -71,6 +76,7 @@ export default function PenjualanPage() {
       setError(err.message || 'Terjadi kesalahan')
     } finally {
       setSaving(false)
+      savingRef.current = false
     }
   }
 

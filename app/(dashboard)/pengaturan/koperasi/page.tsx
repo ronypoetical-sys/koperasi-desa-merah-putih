@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 
 export default function PengaturanKoperasiPage() {
-  const { koperasiId, userId, loading: authLoading } = useAuth()
+  const { koperasiId, userId, role: currentRole, loading: authLoading } = useAuth()
   const [form, setForm] = useState<any>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -13,6 +13,17 @@ export default function PengaturanKoperasiPage() {
   const [error, setError] = useState('')
 
   useEffect(() => { if (!authLoading && koperasiId) loadData() }, [authLoading, koperasiId])
+
+  // SEC-003 FIX: Only admin/bendahara can edit koperasi settings
+  if (!authLoading && !['admin', 'bendahara'].includes(currentRole)) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="text-4xl mb-4">🔒</div>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Akses Ditolak</h2>
+        <p className="text-gray-500 text-sm">Hanya Admin atau Bendahara yang dapat mengubah pengaturan koperasi.</p>
+      </div>
+    )
+  }
 
   async function loadData() {
     const supabase = createClient()
