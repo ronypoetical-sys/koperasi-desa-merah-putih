@@ -1,63 +1,61 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/hooks/useAuth'
+import Pagination from '@/components/ui/Pagination'
+
+const PAGE_SIZE = 25
 
 export default function JurnalPage() {
-  const [journals, setJournals] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [koperasiId, setKoperasiId] = useState('')
-  const [koperasiNama, setKoperasiNama] = useState('')
-  const [koperasiAlamat, setKoperasiAlamat] = useState('')
-  const [filterTanggalDari, setFilterTanggalDari] = useState('')
+  const { koperasiId, loading: authLoading } = useAuth()
+  const [journals, setJournals]               = useState<any[]>([])
+  const [loading, setLoading]                 = useState(true)
+  const [koperasiNama, setKoperasiNama]       = useState('')
+  const [koperasiAlamat, setKoperasiAlamat]   = useState('')
+  const [filterTanggalDari, setFilterTanggalDari]     = useState('')
   const [filterTanggalSampai, setFilterTanggalSampai] = useState('')
+  const [page, setPage] = useState(1)
 
-  useEffect(() => { loadJournals() }, [])
+  useEffect(() => {
+    if (!authLoading && koperasiId) loadJournals()
+  }, [authLoading, koperasiId])
+
+  // Reset page saat filter berubah
+  useEffect(() => { setPage(1) }, [filterTanggalDari, filterTanggalSampai])
 
   async function loadJournals() {
+    setLoading(true)
     const supabase = createClient()
-    const { data: authUser } = await supabase.auth.getUser()
-    if (!authUser.user) return
 
+    // Ambil info koperasi
     const { data: userData } = await supabase
       .from('users')
-      .select('koperasi_id, koperasi(nama_koperasi, alamat, desa, kecamatan, kabupaten, provinsi)')
-      .eq('id', authUser.user.id)
+      .select('koperasi(nama_koperasi, alamat, desa, kecamatan)')
+      .eq('koperasi_id', koperasiId)
+      .limit(1)
       .single() as any
-    if (!userData?.koperasi_id) return
-
-    setKoperasiId(userData.koperasi_id)
-    const kop = userData.koperasi as any
+    const kop = userData?.koperasi as any
     setKoperasiNama(kop?.nama_koperasi || '')
     setKoperasiAlamat([kop?.alamat, kop?.desa, kop?.kecamatan].filter(Boolean).join(', '))
 
-    const unitIds = await supabase
-      .from('unit_usaha')
-      .select('id')
-      .eq('koperasi_id', userData.koperasi_id)
-
-    if (!unitIds.data || unitIds.data.length === 0) {
-      setJournals([])
-      setLoading(false)
-      return
-    }
-
+    // PERF-002 FIX: Satu query dengan join langsung ke unit_usaha.koperasi_id
+    // Tidak perlu 2 round trips (fetch unit_usaha IDs dulu, baru query journals)
     let query = supabase
       .from('journals')
       .select(`
         *,
-        unit_usaha(nama_unit),
+        unit_usaha!inner(nama_unit, koperasi_id),
         transactions(keterangan, jenis_transaksi, anggota(nama)),
         journal_items(
           debit, credit,
           accounts(kode_akun, nama_akun)
         )
       `)
-      .in('unit_usaha_id', (unitIds.data as any[]).map((u: any) => u.id))
+      .eq('unit_usaha.koperasi_id', koperasiId)
       .order('tanggal', { ascending: false })
-      .limit(100)
 
-    if (filterTanggalDari) query = query.gte('tanggal', filterTanggalDari)
+    if (filterTanggalDari)   query = query.gte('tanggal', filterTanggalDari)
     if (filterTanggalSampai) query = query.lte('tanggal', filterTanggalSampai)
 
     const { data } = await query
@@ -66,6 +64,10 @@ export default function JurnalPage() {
   }
 
   function handleFilter() { setLoading(true); loadJournals() }
+
+  // PERF-003: Pagination
+  const totalPages = Math.max(1, Math.ceil(journals.length / PAGE_SIZE))
+  const paginated  = useMemo(() => journals.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [journals, page])
 
   const today = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
   const cetakWaktu = new Date().toLocaleString('id-ID')
@@ -145,7 +147,7 @@ export default function JurnalPage() {
               </tr>
             </thead>
             <tbody>
-              {journals.map(journal => (
+              {paginated.map(journal => (
                 journal.journal_items?.map((item: any, idx: number) => (
                   <tr key={`${journal.id}-${idx}`}
                     className={`border-b border-gray-50 hover:bg-gray-50 ${idx === 0 ? 'border-t-2 border-t-gray-200' : ''}`}>
@@ -200,6 +202,7 @@ export default function JurnalPage() {
               </tr>
             </tfoot>
           </table>
+          <Pagination page={page} totalPages={totalPages} totalItems={journals.length} pageSize={PAGE_SIZE} onPageChange={setPage} />
         )}
       </div>
     </div>

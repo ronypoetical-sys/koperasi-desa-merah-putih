@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 interface DashboardClientProps {
@@ -19,27 +20,28 @@ function formatRupiah(n: number) {
 }
 
 export default function DashboardClient({ stats, recentTransactions, shuRawData, tahun }: DashboardClientProps) {
-  // Proses data SHU per bulan
-  const bulanMap: Record<number, { pendapatan: number; beban: number }> = {}
-  shuRawData.forEach(row => {
-    if (!bulanMap[row.bulan]) bulanMap[row.bulan] = { pendapatan: 0, beban: 0 }
-    bulanMap[row.bulan].pendapatan += row.pendapatan || 0
-    bulanMap[row.bulan].beban += row.beban || 0
-  })
+  // PERF-005 FIX: useMemo — kalkulasi chart data hanya dijalankan ulang jika shuRawData/tahun berubah
+  const chartData = useMemo(() => {
+    const bulanMap: Record<number, { pendapatan: number; beban: number }> = {}
+    shuRawData.forEach(row => {
+      if (!bulanMap[row.bulan]) bulanMap[row.bulan] = { pendapatan: 0, beban: 0 }
+      bulanMap[row.bulan].pendapatan += row.pendapatan || 0
+      bulanMap[row.bulan].beban += row.beban || 0
+    })
+    return BULAN.map((nama, i) => ({
+      bulan: nama,
+      pendapatan: bulanMap[i + 1]?.pendapatan || 0,
+      beban: bulanMap[i + 1]?.beban || 0,
+      shu: (bulanMap[i + 1]?.pendapatan || 0) - (bulanMap[i + 1]?.beban || 0),
+    }))
+  }, [shuRawData])
 
-  const chartData = BULAN.map((nama, i) => ({
-    bulan: nama,
-    pendapatan: bulanMap[i + 1]?.pendapatan || 0,
-    beban: bulanMap[i + 1]?.beban || 0,
-    shu: (bulanMap[i + 1]?.pendapatan || 0) - (bulanMap[i + 1]?.beban || 0),
-  }))
-
-  const statCards = [
+  const statCards = useMemo(() => [
     { label: 'Total Anggota', value: stats?.total_anggota || 0, format: 'number', icon: '👥', color: 'bg-blue-50 text-blue-600' },
     { label: 'Total Simpanan', value: stats?.total_simpanan || 0, format: 'currency', icon: '🏦', color: 'bg-green-50 text-green-600' },
     { label: 'Total Pinjaman', value: stats?.total_pinjaman || 0, format: 'currency', icon: '📤', color: 'bg-orange-50 text-orange-600' },
     { label: 'Unit Usaha Aktif', value: stats?.total_unit_usaha || 0, format: 'number', icon: '🏪', color: 'bg-purple-50 text-purple-600' },
-  ]
+  ], [stats])
 
   const jenisBadge: Record<string, string> = {
     simpanan: 'bg-green-100 text-green-700',

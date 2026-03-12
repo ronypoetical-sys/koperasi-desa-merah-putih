@@ -1,8 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
+import Pagination from '@/components/ui/Pagination'
+
+const PAGE_SIZE = 25
 
 const KATEGORI_COLORS: Record<string, string> = {
   aset: 'bg-blue-100 text-blue-700',
@@ -20,6 +23,7 @@ export default function AccountsPage() {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [filter, setFilter] = useState('semua')
+  const [page, setPage]     = useState(1)
   const [form, setForm] = useState({ kode_akun: '', nama_akun: '', kategori: 'aset', unit_usaha_id: '', parent_id: '' })
 
   const canEdit = ['admin', 'bendahara'].includes(role)
@@ -66,7 +70,9 @@ export default function AccountsPage() {
     else loadData()
   }
 
-  const filtered = filter === 'semua' ? accounts : accounts.filter(a => a.kategori === filter)
+  const filtered   = useMemo(() => filter === 'semua' ? accounts : accounts.filter(a => a.kategori === filter), [accounts, filter])
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
     <div className="space-y-6">
@@ -109,7 +115,7 @@ export default function AccountsPage() {
             <tbody className="divide-y divide-gray-50">
               {filtered.length === 0 ? (
                 <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-400">Tidak ada akun</td></tr>
-              ) : filtered.map(a => (
+              ) : paginated.map(a => (
                 <tr key={a.id} className="hover:bg-gray-50">
                   <td className="px-6 py-3 font-mono text-gray-600 text-xs">{a.kode_akun}</td>
                   <td className="px-6 py-3 text-gray-800 font-medium">{a.nama_akun}</td>
@@ -126,7 +132,7 @@ export default function AccountsPage() {
               ))}
             </tbody>
           </table>
-        )}
+          <Pagination page={page} totalPages={totalPages} totalItems={filtered.length} pageSize={PAGE_SIZE} onPageChange={setPage} />
       </div>
 
       {showForm && (

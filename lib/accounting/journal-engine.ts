@@ -1,11 +1,16 @@
 /**
  * Journal Engine — Mesin Jurnal Akuntansi Otomatis
  * FIX: Semua transaksi sekarang menggunakan stored procedure (atomic, ACID)
- * FIX: Floating point dihindari dengan pembulatan ke 2 desimal
+ * FIX: BUG-004 Floating point dihindari dengan decimal.js (presisi penuh)
  * FIX: parseRupiah diperbaiki untuk format IDR yang benar
  */
 
 import { createClient } from '@/lib/supabase/client'
+import Decimal from 'decimal.js'
+import { logError, mapDbErrorToUserMessage } from '@/lib/utils/logger'
+
+// Konfigurasi Decimal untuk akuntansi (presisi tinggi, tidak ada notasi ilmiah)
+Decimal.set({ precision: 20, rounding: Decimal.ROUND_HALF_UP, toExpNeg: -9, toExpPos: 20 })
 
 export type JournalEntry = {
   account_id: string
@@ -27,21 +32,22 @@ export type TransactionInput = {
 
 /**
  * Validasi jurnal: total debit harus sama dengan total credit
- * FIX: Gunakan Math.round untuk menghindari floating point errors
+ * FIX BUG-004: Gunakan Decimal.js untuk menghindari floating point imprecision
  */
 export function validateJournal(entries: JournalEntry[]): { valid: boolean; message?: string } {
   if (entries.length < 2) {
     return { valid: false, message: 'Jurnal harus memiliki minimal 2 entri' }
   }
 
-  // FIX: Round ke 2 desimal untuk menghindari floating point imprecision
-  const totalDebit  = Math.round(entries.reduce((sum, e) => sum + (e.debit  || 0), 0) * 100) / 100
-  const totalCredit = Math.round(entries.reduce((sum, e) => sum + (e.credit || 0), 0) * 100) / 100
+  // FIX BUG-004: Decimal.js — menghindari 0.1 + 0.2 = 0.30000000000004
+  const totalDebit  = entries.reduce((sum, e) => sum.plus(new Decimal(e.debit  || 0)), new Decimal(0))
+  const totalCredit = entries.reduce((sum, e) => sum.plus(new Decimal(e.credit || 0)), new Decimal(0))
+  const diff = totalDebit.minus(totalCredit).abs()
 
-  if (Math.abs(totalDebit - totalCredit) > 0.01) {
+  if (diff.greaterThan(new Decimal('0.001'))) {
     return {
       valid: false,
-      message: `Jurnal tidak balance: Total Debit (${formatRupiah(totalDebit)}) ≠ Total Kredit (${formatRupiah(totalCredit)})`,
+      message: `Jurnal tidak balance: Total Debit (${formatRupiah(totalDebit.toNumber())}) ≠ Total Kredit (${formatRupiah(totalCredit.toNumber())})`,
     }
   }
 
@@ -87,12 +93,13 @@ export async function saveTransaction(input: TransactionInput) {
   })
 
   if (error) {
-    // Map database errors to user-friendly messages
-    const msg = error.message || 'Gagal menyimpan transaksi'
-    if (msg.includes('tidak balance')) throw new Error(`Jurnal tidak balance: ${msg}`)
-    if (msg.includes('akun tidak valid')) throw new Error('Akun jurnal tidak valid — silakan pilih ulang')
-    if (msg.includes('Akses ditolak')) throw new Error('Akses ditolak')
-    throw new Error(`Gagal menyimpan: ${msg}`)
+    // REL-001: Log error terstruktur untuk debugging produksi
+    logError('saveTransaction', 'RPC create_transaction_with_journal failed', error, {
+      jenis: input.jenis_transaksi,
+      koperasi_id: input.koperasi_id,
+    })
+    // REL-002: Tampilkan pesan user-friendly, bukan detail internal DB
+    throw new Error(mapDbErrorToUserMessage(error))
   }
 
   return data as { transaction_id: string; journal_id: string }

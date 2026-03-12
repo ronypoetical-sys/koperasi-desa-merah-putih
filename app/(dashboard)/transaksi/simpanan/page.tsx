@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { logError, mapDbErrorToUserMessage } from '@/lib/utils/logger'
 import { saveTransaction, validateJournal, getTodayLocal } from '@/lib/accounting/journal-engine'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -81,7 +82,8 @@ export default function SimpananPage() {
       loadData()
       setTimeout(() => setSuccess(''), 5000)
     } catch (err: any) {
-      setError(err.message || 'Terjadi kesalahan')
+      setError(mapDbErrorToUserMessage(err))
+      logError('simpananPage.handleSimpan', 'Failed to save transaction', err)
     } finally {
       setSaving(false)
       savingRef.current = false
