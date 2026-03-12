@@ -49,7 +49,7 @@ export default function AccountsPage() {
       kategori: form.kategori as 'aset' | 'kewajiban' | 'modal' | 'pendapatan' | 'beban',
       unit_usaha_id: form.unit_usaha_id || null,
       parent_id: form.parent_id || null,
-    })
+    } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
     if (!error) {
       setShowForm(false)
       setForm({ kode_akun: '', nama_akun: '', kategori: 'aset', unit_usaha_id: '', parent_id: '' })
