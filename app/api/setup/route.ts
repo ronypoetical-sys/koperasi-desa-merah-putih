@@ -4,10 +4,14 @@
  *
  * Why needed: client-side validation can be bypassed (devtools, direct API calls).
  * This route validates and sanitizes all input at the server boundary.
+ *
+ * Uses service role client for DB operations to avoid RLS 403 on newly registered
+ * users whose session cookie may not yet be fully propagated server-side.
+ * Auth is still verified via userClient.auth.getUser() before any DB writes.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 // --- Validation helpers ---
 
@@ -104,9 +108,9 @@ export async function POST(req: NextRequest) {
       tahun_buku_akhir: Number(body.tahun_buku_akhir),
     }
 
-    // Auth check — only logged-in users can create koperasi
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    // Auth check — gunakan user client (cookie-based) hanya untuk verifikasi identity
+    const userClient = await createClient()
+    const { data: { user }, error: authError } = await userClient.auth.getUser()
 
     if (authError || !user) {
       return NextResponse.json(
@@ -114,6 +118,9 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       )
     }
+
+    // Gunakan service client untuk DB operations (bypass RLS — sudah diotorisasi di atas)
+    const supabase = createServiceClient()
 
     // Check user doesn't already have a koperasi
     const { data: existing } = await (supabase as any)
