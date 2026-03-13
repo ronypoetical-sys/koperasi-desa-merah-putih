@@ -80,7 +80,7 @@ export async function saveTransaction(input: TransactionInput) {
   const supabase = createClient()
 
   // Single atomic RPC call — replaces 3 separate INSERT calls
-  const { data, error } = await supabase.rpc('create_transaction_with_journal', {
+  const { data, error } = await (supabase as any).rpc('create_transaction_with_journal', {
     p_koperasi_id:     input.koperasi_id,
     p_unit_usaha_id:   input.unit_usaha_id,
     p_anggota_id:      input.anggota_id || null,

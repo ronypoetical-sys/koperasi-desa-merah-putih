@@ -37,7 +37,7 @@ export default function NeracaPage() {
       .eq('koperasi_id', userData.koperasi_id)
       .order('kode_akun')
 
-    const rows = neracaData || []
+    const rows: any[] = neracaData || []
     const aset = rows.filter(a => a.kategori === 'aset')
     const kewajiban = rows.filter(a => a.kategori === 'kewajiban')
     const modal = rows.filter(a => a.kategori === 'modal')

@@ -49,7 +49,7 @@ export default function AnggotaPage() {
     const supabase = createClient()
     try {
       if (editData) {
-        await supabase.from('anggota').update({
+        await (supabase.from('anggota') as any).update({
           nama: form.nama.trim(),
           nik: form.nik.trim(),
           alamat: form.alamat.trim(),
@@ -58,7 +58,7 @@ export default function AnggotaPage() {
           status: form.status,
         }).eq('id', editData.id)
       } else {
-        await supabase.from('anggota').insert({
+        await (supabase.from('anggota') as any).insert({
           koperasi_id: koperasiId,
           nama: form.nama.trim(),
           nik: form.nik.trim(),

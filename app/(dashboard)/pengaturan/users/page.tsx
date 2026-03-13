@@ -52,9 +52,9 @@ export default function UsersPage() {
     setSaving(userId)
     setError('')
     const supabase = createClient()
-    const { error: updateError } = await supabase
+    const { error: updateError } = await (supabase as any)
       .from('users')
-      .update({ role: newRole })
+      .update({ role:  newRole })
       .eq('id', userId)
       .eq('koperasi_id', koperasiId) // extra safety: scoped to koperasi
 

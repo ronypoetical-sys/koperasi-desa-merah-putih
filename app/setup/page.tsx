@@ -66,43 +66,23 @@ export default function SetupPage() {
     setLoading(true)
     setError('')
 
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { window.location.href = '/auth/login'; return }
+    // BUG-008 FIX: Use server-side validated API route
+    const res = await fetch('/api/setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    })
 
-    // Insert koperasi
-    const { data: koperasi, error: koperasiError } = await supabase
-      .from('koperasi')
-      .insert({
-        nama_koperasi: form.nama_koperasi.trim(),
-        alamat: form.alamat.trim() || null,
-        desa: form.desa.trim() || null,
-        kecamatan: form.kecamatan.trim() || null,
-        kabupaten: form.kabupaten.trim() || null,
-        provinsi: form.provinsi.trim() || null,
-        tanggal_berdiri: form.tanggal_berdiri || null,
-        no_akta: form.no_akta.trim() || null,
-        npwp: form.npwp.trim() || null,
-        tahun_buku_mulai: form.tahun_buku_mulai,
-        tahun_buku_akhir: form.tahun_buku_akhir,
-      })
-      .select()
-      .single()
+    const result = await res.json()
 
-    if (koperasiError) {
-      setError('Gagal menyimpan data koperasi. Coba lagi.')
-      setLoading(false)
-      return
-    }
-
-    // Update user with koperasi_id
-    const { error: userError } = await supabase
-      .from('users')
-      .update({ koperasi_id: koperasi.id })
-      .eq('id', user.id)
-
-    if (userError) {
-      setError('Gagal mengaitkan akun dengan koperasi. Hubungi administrator.')
+    if (!result.success) {
+      if (result.errors) {
+        // Field-level validation errors from server
+        const firstError = Object.values(result.errors)[0] as string
+        setError(firstError)
+      } else {
+        setError(result.error || 'Terjadi kesalahan. Coba lagi.')
+      }
       setLoading(false)
       return
     }

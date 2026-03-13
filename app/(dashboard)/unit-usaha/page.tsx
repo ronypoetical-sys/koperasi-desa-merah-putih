@@ -45,7 +45,7 @@ export default function UnitUsahaPage() {
 
     const supabase = createClient()
 
-    const { data: unit, error } = await supabase.from('unit_usaha').insert({
+    const { data: unit, error } = await (supabase as any).from('unit_usaha').insert({
       koperasi_id: koperasiId,
       kode_unit: form.kode_unit,
       nama_unit: form.nama_unit,
@@ -56,13 +56,13 @@ export default function UnitUsahaPage() {
     if (!error && form.template_id && unit) {
       // Load template COA items dan buat accounts
       const { data: templateItems } = await supabase
-        .from('coa_template_items')
+        .from('coa_template_items' as any)
         .select('*')
         .eq('template_id', form.template_id)
         .order('urutan')
 
       if (templateItems && templateItems.length > 0) {
-        const accounts = templateItems.map(item => ({
+        const accounts = (templateItems as any[]).map(item => ({
           koperasi_id: koperasiId,
           unit_usaha_id: unit.id,
           kode_akun: `${form.kode_unit}-${item.kode_akun}`,
@@ -70,7 +70,7 @@ export default function UnitUsahaPage() {
           kategori: item.kategori,
           is_system: true,
         }))
-        await supabase.from('accounts').insert(accounts)
+        await (supabase as any).from('accounts').insert(accounts)
       }
     }
 

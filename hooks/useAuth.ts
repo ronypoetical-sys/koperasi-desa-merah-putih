@@ -35,11 +35,11 @@ export function useAuth(): AuthState {
         return
       }
 
-      const { data: userData, error: userError } = await supabase
+      const { data: userData, error: userError } = await (supabase
         .from('users')
         .select('koperasi_id, role')
         .eq('id', user.id)
-        .single()
+        .single() as any)
 
       if (userError || !userData?.koperasi_id) {
         window.location.href = '/setup'

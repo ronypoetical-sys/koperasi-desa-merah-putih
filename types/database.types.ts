@@ -1,8 +1,49 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+/**
+ * database.types.ts — Regenerated from Supabase schema 2026-03-13
+ * ARCH-005 FIX: Proper types allow removing ignoreBuildErrors: true
+ */
 
-export type Database = {
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export interface Database {
   public: {
     Tables: {
+      users: {
+        Row: {
+          id: string
+          name: string
+          email: string
+          role: 'admin' | 'bendahara' | 'kasir' | 'pengawas'
+          koperasi_id: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id: string
+          name: string
+          email: string
+          role: 'admin' | 'bendahara' | 'kasir' | 'pengawas'
+          koperasi_id?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string
+          role?: 'admin' | 'bendahara' | 'kasir' | 'pengawas'
+          koperasi_id?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       koperasi: {
         Row: {
           id: string
@@ -17,37 +58,42 @@ export type Database = {
           npwp: string | null
           tahun_buku_mulai: number | null
           tahun_buku_akhir: number | null
-          created_at: string
+          created_at: string | null
+          updated_at: string | null
         }
-        Insert: Omit<Database['public']['Tables']['koperasi']['Row'], 'id' | 'created_at'>
-        Update: Partial<Database['public']['Tables']['koperasi']['Insert']>
-      }
-      users: {
-        Row: {
-          id: string
-          name: string
-          email: string
-          role: 'admin' | 'bendahara' | 'kasir' | 'pengawas'
-          koperasi_id: string | null
-          created_at: string
+        Insert: {
+          id?: string
+          nama_koperasi: string
+          alamat?: string | null
+          desa?: string | null
+          kecamatan?: string | null
+          kabupaten?: string | null
+          provinsi?: string | null
+          tanggal_berdiri?: string | null
+          no_akta?: string | null
+          npwp?: string | null
+          tahun_buku_mulai?: number | null
+          tahun_buku_akhir?: number | null
+          created_at?: string | null
+          updated_at?: string | null
         }
-        Insert: Omit<Database['public']['Tables']['users']['Row'], 'created_at'>
-        Update: Partial<Database['public']['Tables']['users']['Insert']>
-      }
-      anggota: {
-        Row: {
-          id: string
-          koperasi_id: string
-          nama: string
-          nik: string | null
-          alamat: string | null
-          no_hp: string | null
-          tanggal_masuk: string | null
-          status: 'aktif' | 'nonaktif'
-          created_at: string
+        Update: {
+          id?: string
+          nama_koperasi?: string
+          alamat?: string | null
+          desa?: string | null
+          kecamatan?: string | null
+          kabupaten?: string | null
+          provinsi?: string | null
+          tanggal_berdiri?: string | null
+          no_akta?: string | null
+          npwp?: string | null
+          tahun_buku_mulai?: number | null
+          tahun_buku_akhir?: number | null
+          created_at?: string | null
+          updated_at?: string | null
         }
-        Insert: Omit<Database['public']['Tables']['anggota']['Row'], 'id' | 'created_at'>
-        Update: Partial<Database['public']['Tables']['anggota']['Insert']>
+        Relationships: []
       }
       unit_usaha: {
         Row: {
@@ -56,11 +102,28 @@ export type Database = {
           kode_unit: string
           nama_unit: string
           deskripsi: string | null
-          status: 'aktif' | 'nonaktif'
-          created_at: string
+          status: 'aktif' | 'nonaktif' | null
+          created_at: string | null
         }
-        Insert: Omit<Database['public']['Tables']['unit_usaha']['Row'], 'id' | 'created_at'>
-        Update: Partial<Database['public']['Tables']['unit_usaha']['Insert']>
+        Insert: {
+          id?: string
+          koperasi_id: string
+          kode_unit: string
+          nama_unit: string
+          deskripsi?: string | null
+          status?: 'aktif' | 'nonaktif' | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          koperasi_id?: string
+          kode_unit?: string
+          nama_unit?: string
+          deskripsi?: string | null
+          status?: 'aktif' | 'nonaktif' | null
+          created_at?: string | null
+        }
+        Relationships: []
       }
       accounts: {
         Row: {
@@ -71,11 +134,68 @@ export type Database = {
           nama_akun: string
           kategori: 'aset' | 'kewajiban' | 'modal' | 'pendapatan' | 'beban'
           parent_id: string | null
-          is_system: boolean
-          created_at: string
+          is_system: boolean | null
+          created_at: string | null
         }
-        Insert: Omit<Database['public']['Tables']['accounts']['Row'], 'id' | 'created_at' | 'is_system'> & { is_system?: boolean }
-        Update: Partial<Database['public']['Tables']['accounts']['Insert']>
+        Insert: {
+          id?: string
+          koperasi_id: string
+          unit_usaha_id?: string | null
+          kode_akun: string
+          nama_akun: string
+          kategori: 'aset' | 'kewajiban' | 'modal' | 'pendapatan' | 'beban'
+          parent_id?: string | null
+          is_system?: boolean | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          koperasi_id?: string
+          unit_usaha_id?: string | null
+          kode_akun?: string
+          nama_akun?: string
+          kategori?: 'aset' | 'kewajiban' | 'modal' | 'pendapatan' | 'beban'
+          parent_id?: string | null
+          is_system?: boolean | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      anggota: {
+        Row: {
+          id: string
+          koperasi_id: string
+          nama: string
+          nik: string | null
+          alamat: string | null
+          no_hp: string | null
+          tanggal_masuk: string | null
+          status: 'aktif' | 'nonaktif' | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          koperasi_id: string
+          nama: string
+          nik?: string | null
+          alamat?: string | null
+          no_hp?: string | null
+          tanggal_masuk?: string | null
+          status?: 'aktif' | 'nonaktif' | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          koperasi_id?: string
+          nama?: string
+          nik?: string | null
+          alamat?: string | null
+          no_hp?: string | null
+          tanggal_masuk?: string | null
+          status?: 'aktif' | 'nonaktif' | null
+          created_at?: string | null
+        }
+        Relationships: []
       }
       transactions: {
         Row: {
@@ -88,10 +208,33 @@ export type Database = {
           keterangan: string | null
           total_amount: number
           created_by: string | null
-          created_at: string
+          created_at: string | null
         }
-        Insert: Omit<Database['public']['Tables']['transactions']['Row'], 'id' | 'created_at'>
-        Update: Partial<Database['public']['Tables']['transactions']['Insert']>
+        Insert: {
+          id?: string
+          koperasi_id: string
+          unit_usaha_id: string
+          anggota_id?: string | null
+          jenis_transaksi: 'simpanan' | 'penarikan_simpanan' | 'pinjaman' | 'angsuran' | 'penjualan' | 'pembelian' | 'biaya_operasional' | 'lainnya'
+          tanggal: string
+          keterangan?: string | null
+          total_amount: number
+          created_by?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          koperasi_id?: string
+          unit_usaha_id?: string
+          anggota_id?: string | null
+          jenis_transaksi?: 'simpanan' | 'penarikan_simpanan' | 'pinjaman' | 'angsuran' | 'penjualan' | 'pembelian' | 'biaya_operasional' | 'lainnya'
+          tanggal?: string
+          keterangan?: string | null
+          total_amount?: number
+          created_by?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
       }
       journals: {
         Row: {
@@ -100,10 +243,25 @@ export type Database = {
           tanggal: string
           unit_usaha_id: string
           keterangan: string | null
-          created_at: string
+          created_at: string | null
         }
-        Insert: Omit<Database['public']['Tables']['journals']['Row'], 'id' | 'created_at'>
-        Update: Partial<Database['public']['Tables']['journals']['Insert']>
+        Insert: {
+          id?: string
+          transaction_id: string
+          tanggal: string
+          unit_usaha_id: string
+          keterangan?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          transaction_id?: string
+          tanggal?: string
+          unit_usaha_id?: string
+          keterangan?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
       }
       journal_items: {
         Row: {
@@ -113,8 +271,21 @@ export type Database = {
           debit: number
           credit: number
         }
-        Insert: Omit<Database['public']['Tables']['journal_items']['Row'], 'id'>
-        Update: Partial<Database['public']['Tables']['journal_items']['Insert']>
+        Insert: {
+          id?: string
+          journal_id: string
+          account_id: string
+          debit?: number
+          credit?: number
+        }
+        Update: {
+          id?: string
+          journal_id?: string
+          account_id?: string
+          debit?: number
+          credit?: number
+        }
+        Relationships: []
       }
       audit_logs: {
         Row: {
@@ -125,10 +296,29 @@ export type Database = {
           record_id: string | null
           old_data: Json | null
           new_data: Json | null
-          created_at: string
+          created_at: string | null
         }
-        Insert: Omit<Database['public']['Tables']['audit_logs']['Row'], 'id' | 'created_at'>
-        Update: never
+        Insert: {
+          id?: string
+          user_id?: string | null
+          action: string
+          table_name: string
+          record_id?: string | null
+          old_data?: Json | null
+          new_data?: Json | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          action?: string
+          table_name?: string
+          record_id?: string | null
+          old_data?: Json | null
+          new_data?: Json | null
+          created_at?: string | null
+        }
+        Relationships: []
       }
       coa_templates: {
         Row: {
@@ -136,10 +326,23 @@ export type Database = {
           nama_template: string
           jenis_unit: string
           deskripsi: string | null
-          created_at: string
+          created_at: string | null
         }
-        Insert: never
-        Update: never
+        Insert: {
+          id?: string
+          nama_template: string
+          jenis_unit: string
+          deskripsi?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          nama_template?: string
+          jenis_unit?: string
+          deskripsi?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
       }
       coa_template_items: {
         Row: {
@@ -149,63 +352,70 @@ export type Database = {
           nama_akun: string
           kategori: 'aset' | 'kewajiban' | 'modal' | 'pendapatan' | 'beban'
           parent_kode: string | null
-          urutan: number
+          urutan: number | null
         }
-        Insert: never
-        Update: never
+        Insert: {
+          id?: string
+          template_id: string
+          kode_akun: string
+          nama_akun: string
+          kategori: 'aset' | 'kewajiban' | 'modal' | 'pendapatan' | 'beban'
+          parent_kode?: string | null
+          urutan?: number | null
+        }
+        Update: {
+          id?: string
+          template_id?: string
+          kode_akun?: string
+          nama_akun?: string
+          kategori?: 'aset' | 'kewajiban' | 'modal' | 'pendapatan' | 'beban'
+          parent_kode?: string | null
+          urutan?: number | null
+        }
+        Relationships: []
       }
     }
     Views: {
-      v_buku_besar: {
-        Row: {
-          id: string
-          tanggal: string
-          keterangan: string | null
-          kode_akun: string
-          nama_akun: string
-          kategori: string
-          nama_unit: string
-          debit: number
-          credit: number
-          saldo_berjalan: number
-          koperasi_id: string
-          account_id: string
+      [_ in never]: never
+    }
+    Functions: {
+      create_transaction_with_journal: {
+        Args: {
+          p_koperasi_id: string
+          p_unit_usaha_id: string
+          p_anggota_id: string | null
+          p_jenis_transaksi: string
+          p_tanggal: string
+          p_keterangan: string
+          p_total_amount: number
+          p_created_by: string
+          p_journal_entries: Json
         }
+        Returns: Json
       }
-      v_neraca: {
-        Row: {
-          koperasi_id: string
-          account_id: string
-          kode_akun: string
-          nama_akun: string
-          kategori: string
-          parent_id: string | null
-          saldo: number
+      update_koperasi_safe: {
+        Args: {
+          p_id: string
+          p_last_known_updated_at: string
+          p_data: Json
         }
+        Returns: Json
       }
-      v_shu: {
-        Row: {
-          koperasi_id: string
-          unit_usaha_id: string
-          nama_unit: string
-          kategori: string
-          nama_akun: string
-          tahun: number
-          bulan: number
-          pendapatan: number
-          beban: number
-        }
+      get_my_koperasi_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
-      v_dashboard_stats: {
-        Row: {
-          koperasi_id: string
-          nama_koperasi: string
-          total_anggota: number
-          total_unit_usaha: number
-          total_simpanan: number
-          total_pinjaman: number
-        }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
       }
+      has_role: {
+        Args: { allowed_roles: string[] }
+        Returns: boolean
+      }
+    }
+    Enums: {
+      [_ in never]: never
     }
   }
 }

@@ -29,7 +29,7 @@ export default function PengaturanKoperasiPage() {
 
   async function loadData() {
     const supabase = createClient()
-    const { data } = await supabase.from('koperasi').select('*').eq('id', koperasiId).single()
+    const { data } = await supabase.from('koperasi' as any).select('*').eq('id', koperasiId).single() as any
     setForm(data || {})
     setLastUpdatedAt(data?.updated_at || new Date().toISOString())  // REL-006
     setLoading(false)
@@ -43,7 +43,7 @@ export default function PengaturanKoperasiPage() {
       const supabase = createClient()
       // REL-006 FIX: Gunakan stored procedure dengan optimistic locking
       // Akan gagal dengan error 'conflict' jika data berubah sejak terakhir dimuat
-      const { data: result, error: rpcErr } = await supabase.rpc('update_koperasi_safe', {
+      const { data: result, error: rpcErr } = await (supabase as any).rpc('update_koperasi_safe', {
         p_id: koperasiId,
         p_last_known_updated_at: lastUpdatedAt,
         p_data: {
